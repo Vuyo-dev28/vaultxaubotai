@@ -1,41 +1,67 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { createClient } from '@/utils/supabase/client'
 
 export default function LiveLogs({ userId }: { userId: string }) {
   const [logs, setLogs] = useState<{ message: string; timestamp: string }[]>([])
   const [status, setStatus] = useState<'connecting' | 'connected' | 'error'>('connecting')
-  const supabase = createClient()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const eventSourceRef = useRef<EventSource | null>(null)
 
   useEffect(() => {
-    if (!userId) {
-      console.log("❌ LiveLogs: No UserID provided")
-      return
+    const connectToLogs = () => {
+      console.log('🔌 Attempting to connect to http://localhost:8888/logs')
+      setStatus('connecting')
+
+      try {
+        const eventSource = new EventSource('http://localhost:8888/logs')
+        eventSourceRef.current = eventSource
+
+        eventSource.onopen = () => {
+          console.log('✅ EventSource opened - connection established')
+          setStatus('connected')
+        }
+
+        eventSource.onmessage = (event) => {
+          try {
+            if (event.data.includes('keep-alive')) {
+              console.log('💓 Keep-alive signal received')
+              return
+            }
+            const log = JSON.parse(event.data)
+            console.log('📩 Log received:', log.message)
+            setLogs((prev) => [...prev.slice(-49), log])
+          } catch (e) {
+            console.error('❌ Failed to parse log:', e, 'Data:', event.data)
+          }
+        }
+
+        eventSource.addEventListener('error', () => {
+          const readyState = eventSource.readyState
+          console.error('❌ EventSource error - readyState:', readyState)
+          if (readyState === 2) {
+            // CLOSED
+            console.error('EventSource connection closed')
+            setStatus('error')
+            eventSource.close()
+            setTimeout(connectToLogs, 3000)
+          }
+        })
+      } catch (e) {
+        console.error('❌ Failed to create EventSource:', e)
+        setStatus('error')
+        setTimeout(connectToLogs, 3000)
+      }
     }
 
-    console.log(`🔌 LiveLogs: Connecting to channel bot_logs:${userId}`)
-
-    const channel = supabase.channel(`bot_logs:${userId}`, {
-      config: {
-        broadcast: { self: true },
-      },
-    })
-      .on('broadcast', { event: 'new_log' }, (payload) => {
-        console.log("📩 Received Log:", payload)
-        setLogs((prev) => [...prev.slice(-49), payload.payload])
-      })
-      .subscribe((status) => {
-        console.log("📡 Channel Status:", status)
-        if (status === 'SUBSCRIBED') setStatus('connected')
-        if (status === 'CHANNEL_ERROR') setStatus('error')
-      })
+    connectToLogs()
 
     return () => {
-      supabase.removeChannel(channel)
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+      }
     }
-  }, [userId])
+  }, [])
 
   useEffect(() => {
     if (scrollRef.current) {
