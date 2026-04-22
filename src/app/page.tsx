@@ -1,9 +1,13 @@
 import { createClient } from '@/utils/supabase/server'
 import BotControl from '@/components/BotControl'
 import CredentialsForm from '@/components/CredentialsForm'
+import LiveLogs from '@/components/LiveLogs'
 
 export default async function Page() {
   const supabase = await createClient()
+
+  // Fetch user for the log component
+  const { data: { user } } = await supabase.auth.getUser()
 
   // Fetch bot config
   const { data: botConfig } = await supabase
@@ -154,6 +158,9 @@ export default async function Page() {
 
           {/* Sidebar: Configuration */}
           <div className="space-y-6 md:space-y-8 order-1 lg:order-2">
+            {/* Realtime Logs */}
+            <LiveLogs userId={user?.id || ''} />
+
             <section className="bg-[#0d1425] border border-[#1e2d47] rounded-2xl p-5 md:p-6 shadow-2xl lg:sticky lg:top-10">
               <div className="mb-4 md:mb-6">
                 <h2 className="text-lg md:text-xl font-bold text-white">Bot Settings</h2>
