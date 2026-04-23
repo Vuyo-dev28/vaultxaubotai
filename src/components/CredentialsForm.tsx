@@ -4,7 +4,15 @@ import { useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 
-export default function CredentialsForm({ initialConfig }: { initialConfig: any }) {
+type BotConfig = {
+  mt5_account?: string
+  mt5_server?: string
+  mt5_path?: string
+  max_positions?: number
+  risk_percent?: number
+}
+
+export default function CredentialsForm({ initialConfig }: { initialConfig: BotConfig | null }) {
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     account: initialConfig?.mt5_account || '',
@@ -12,7 +20,7 @@ export default function CredentialsForm({ initialConfig }: { initialConfig: any 
     server: initialConfig?.mt5_server || '',
     path: initialConfig?.mt5_path || '',
     max_positions: initialConfig?.max_positions || 5,
-    risk_percent: initialConfig?.risk_percent || 1.0
+    risk_percent: initialConfig?.risk_percent || 1.0,
   })
   const supabase = createClient()
   const router = useRouter()
@@ -23,7 +31,16 @@ export default function CredentialsForm({ initialConfig }: { initialConfig: any 
 
     const { data: { user } } = await supabase.auth.getUser()
 
-    const payload: any = {
+    const payload: {
+      user_id: string | undefined
+      mt5_account: string
+      mt5_server: string
+      mt5_path: string
+      max_positions: number
+      risk_percent: number
+      updated_at: string
+      mt5_password?: string
+    } = {
       user_id: user?.id,
       mt5_account: form.account,
       mt5_server: form.server,
@@ -53,7 +70,7 @@ export default function CredentialsForm({ initialConfig }: { initialConfig: any 
   return (
     <form onSubmit={save} className="space-y-6">
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-[10px] font-black text-[#7a91b5] uppercase tracking-widest mb-1.5 ml-1">Account ID</label>
             <input
@@ -87,7 +104,7 @@ export default function CredentialsForm({ initialConfig }: { initialConfig: any 
 
         <div className="h-px bg-[#1e2d47] my-4"></div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-[10px] font-black text-[#f5c842] uppercase tracking-widest mb-1.5 ml-1">Max Positions</label>
             <input
@@ -108,6 +125,7 @@ export default function CredentialsForm({ initialConfig }: { initialConfig: any 
             />
           </div>
         </div>
+
       </div>
 
       <button

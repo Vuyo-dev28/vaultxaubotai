@@ -10,11 +10,21 @@ export default function LiveLogs({ userId }: { userId: string }) {
 
   useEffect(() => {
     const connectToLogs = () => {
-      console.log('🔌 Attempting to connect to http://localhost:8888/logs')
+      // Determine API URL based on environment
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'
+      
+      // For development, allow localhost override
+      if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+        // If on a different host, use the same domain with port 8888
+        apiUrl = `http://${window.location.hostname}:8888`
+      }
+      
+      const logsUrl = `${apiUrl}/logs`
+      console.log('🔌 Attempting to connect to', logsUrl)
       setStatus('connecting')
 
       try {
-        const eventSource = new EventSource('http://localhost:8888/logs')
+        const eventSource = new EventSource(logsUrl)
         eventSourceRef.current = eventSource
 
         eventSource.onopen = () => {
